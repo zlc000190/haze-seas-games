@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>🌊 Haze Seas — 果实对战</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      overflow: hidden;
+      background: #0b1220;
+      font-family: 'Inter', system-ui, sans-serif;
+      touch-action: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    #gameContainer {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .battle-arena {
+      width: 90%;
+      max-width: 900px;
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .battle-arena.active { display: flex; }
+    .fighter {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(17, 26, 46, 0.8);
+      border: 1px solid rgba(245, 185, 77, 0.2);
+      border-radius: 16px;
+      padding: 16px 20px;
+    }
+    .fighter.enemy {
+      flex-direction: row-reverse;
+      border-color: rgba(255, 80, 80, 0.3);
+    }
+    .avatar {
+      font-size: 56px;
+      width: 80px;
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(245, 185, 77, 0.1);
+      border-radius: 50%;
+      border: 2px solid rgba(245, 185, 77, 0.3);
+      flex-shrink: 0;
+    }
+    .fighter.enemy .avatar {
+      background: rgba(255, 80, 80, 0.1);
+      border-color: rgba(255, 80, 80, 0.3);
+    }
+    .fighter-info {
+      flex: 1;
+    }
+    .fighter-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 24px;
+      color: #f5b94d;
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+    }
+    .fighter.enemy .fighter-name { color: #ff5050; }
+    .hp-bar {
+      width: 100%;
+      height: 20px;
+      background: rgba(0,0,0,0.4);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .hp-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3aa9ff, #5cc6ff);
+      border-radius: 10px;
+      transition: width 0.4s ease;
+    }
+    .fighter.enemy .hp-fill {
+      background: linear-gradient(90deg, #ff5050, #ff8080);
+    }
+    .hp-text {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-top: 4px;
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 1px;
+    }
+    .vs-section {
+      text-align: center;
+      padding: 8px 0;
+    }
+    .vs-text {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 32px;
+      color: #3aa9ff;
+      letter-spacing: 4px;
+    }
+    .battle-log {
+      min-height: 40px;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 15px;
+      padding: 8px;
+    }
+    .skills {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .skill-btn {
+      background: rgba(17, 26, 46, 0.9);
+      border: 2px solid rgba(245, 185, 77, 0.3);
+      color: #f5b94d;
+      padding: 14px 24px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      min-width: 130px;
+      text-align: center;
+    }
+    .skill-btn:hover:not(:disabled) {
+      background: rgba(245, 185, 77, 0.15);
+      transform: translateY(-2px);
+    }
+    .skill-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .skill-btn .skill-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 18px;
+      letter-spacing: 1px;
+      display: block;
+    }
+    .skill-btn .skill-dmg {
+      font-size: 11px;
+      color: #64748b;
+      display: block;
+      margin-top: 2px;
+    }
+    .skill-btn.ultimate { border-color: rgba(255, 80, 80, 0.4); color: #ff7878; }
+    .skill-btn.ultimate .skill-dmg { color: #ff5050; }
+    #startScreen, #gameOverScreen {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(11, 18, 32, 0.92);
+      backdrop-filter: blur(10px);
+      z-index: 20;
+    }
+    #gameOverScreen { display: none; }
+    .title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 64px;
+      background: linear-gradient(135deg, #f5b94d 0%, #3aa9ff 50%, #f5b94d 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-align: center;
+      line-height: 1.1;
+      margin-bottom: 8px;
+      letter-spacing: 4px;
+    }
+    .subtitle {
+      font-size: 18px;
+      color: #94a3b8;
+      margin-bottom: 40px;
+      text-align: center;
+      max-width: 400px;
+      line-height: 1.5;
+    }
+    .btn {
+      background: linear-gradient(135deg, #f5b94d, #e0a020);
+      color: #0b1220;
+      border: none;
+      padding: 16px 48px;
+      font-size: 22px;
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 3px;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 24px rgba(245, 185, 77, 0.4);
+      transition: all 0.2s ease;
+    }
+    .btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 32px rgba(245, 185, 77, 0.6);
+    }
+    .result-text {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 56px;
+      margin-bottom: 16px;
+      letter-spacing: 3px;
+    }
+    .result-text.win { color: #f5b94d; }
+    .result-text.lose { color: #ff5050; }
+    @media (max-width: 768px) {
+      .title { font-size: 42px; }
+      .avatar { font-size: 40px; width: 60px; height: 60px; }
+      .skill-btn { min-width: 100px; padding: 10px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="gameContainer">
+    <div id="startScreen">
+      <div class="title">FRUIT BATTLE</div>
+      <div class="subtitle">海贼王果实能力者对决！选择技能，击败对手，成为海贼王！</div>
+      <button class="btn" id="startBtn">START BATTLE</button>
+    </div>
+
+    <div class="battle-arena" id="battleArena">
+      <div class="fighter" id="playerFighter">
+        <div class="avatar">🏴‍☠️</div>
+        <div class="fighter-info">
+          <div class="fighter-name">CAPTAIN</div>
+          <div class="hp-bar"><div class="hp-fill" id="playerHp" style="width:100%"></div></div>
+          <div class="hp-text" id="playerHpText">100 / 100</div>
+        </div>
+      </div>
+
+      <div class="vs-section">
+        <div class="vs-text">VS</div>
+        <div class="battle-log" id="battleLog">选择你的技能...</div>
+      </div>
+
+      <div class="fighter enemy" id="enemyFighter">
+        <div class="avatar">👹</div>
+        <div class="fighter-info">
+          <div class="fighter-name">SEA KING</div>
+          <div class="hp-bar"><div class="hp-fill" id="enemyHp" style="width:100%"></div></div>
+          <div class="hp-text" id="enemyHpText">100 / 100</div>
+        </div>
+      </div>
+
+      <div class="skills" id="skillsPanel">
+        <button class="skill-btn" data-skill="0">
+          <span class="skill-name">⚔️ 普通攻击</span>
+          <span class="skill-dmg">15-25 伤害</span>
+        </button>
+        <button class="skill-btn" data-skill="1">
+          <span class="skill-name">🔥 恶魔果实</span>
+          <span class="skill-dmg">30-45 伤害</span>
+        </button>
+        <button class="skill-btn ultimate" data-skill="2">
+          <span class="skill-name">💥 霸王色</span>
+          <span class="skill-dmg">50-70 伤害</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="gameOverScreen">
+      <div class="title">BATTLE OVER</div>
+      <div class="result-text" id="resultText">VICTORY</div>
+      <button class="btn" id="restartBtn">BATTLE AGAIN</button>
+    </div>
+  </div>
+
+  <script>
+    let gameRunning = false;
+    let playerHP = 100;
+    let enemyHP = 100;
+    const maxHP = 100;
+    let playerTurn = true;
+    let ultUsed = false;
+
+    const skills = [
+      { name: '普通攻击', minDmg: 15, maxDmg: 25, emoji: '⚔️' },
+      { name: '恶魔果实', minDmg: 30, maxDmg: 45, emoji: '🔥' },
+      { name: '霸王色', minDmg: 50, maxDmg: 70, emoji: '💥' },
+    ];
+
+    function randDmg(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function updateHP() {
+      document.getElementById('playerHp').style.width = Math.max(0, playerHP) + '%';
+      document.getElementById('enemyHp').style.width = Math.max(0, enemyHP) + '%';
+      document.getElementById('playerHpText').textContent = `${Math.max(0, playerHP)} / ${maxHP}`;
+      document.getElementById('enemyHpText').textContent = `${Math.max(0, enemyHP)} / ${maxHP}`;
+    }
+
+    function setLog(text) {
+      document.getElementById('battleLog').textContent = text;
+    }
+
+    function setSkillsEnabled(enabled) {
+      document.querySelectorAll('.skill-btn').forEach(btn => {
+        if (enabled && btn.dataset.skill === '2' && ultUsed) {
+          btn.disabled = true;
+        } else {
+          btn.disabled = !enabled;
+        }
+      });
+    }
+
+    function playerAttack(skillIdx) {
+      if (!playerTurn || !gameRunning) return;
+      const skill = skills[skillIdx];
+      const dmg = randDmg(skill.minDmg, skill.maxDmg);
+      enemyHP -= dmg;
+      setLog(`${skill.emoji} 你使用「${skill.name}」造成 ${dmg} 伤害！`);
+      updateHP();
+      setSkillsEnabled(false);
+
+      if (skillIdx === 2) ultUsed = true;
+
+      if (enemyHP <= 0) {
+        enemyHP = 0;
+        updateHP();
+        setTimeout(() => endGame(true), 1000);
+        return;
+      }
+
+      playerTurn = false;
+      setTimeout(enemyAttack, 1500);
+    }
+
+    function enemyAttack() {
+      if (!gameRunning) return;
+      // AI随机选择技能，终极技能只用一次
+      let availableSkills = [0, 1];
+      if (!enemyUltUsed) availableSkills.push(2);
+      const skillIdx = availableSkills[Math.floor(Math.random() * availableSkills.length)];
+      const skill = skills[skillIdx];
+      const dmg = randDmg(skill.minDmg, skill.maxDmg);
+      playerHP -= dmg;
+      setLog(`${skill.emoji} 对手使用「${skill.name}」造成 ${dmg} 伤害！`);
+      updateHP();
+
+      if (skillIdx === 2) enemyUltUsed = true;
+
+      if (playerHP <= 0) {
+        playerHP = 0;
+        updateHP();
+        setTimeout(() => endGame(false), 1000);
+        return;
+      }
+
+      playerTurn = true;
+      setTimeout(() => {
+        setLog('轮到你了，选择技能！');
+        setSkillsEnabled(true);
+      }, 1200);
+    }
+
+    let enemyUltUsed = false;
+
+    function endGame(playerWon) {
+      gameRunning = false;
+      const resultEl = document.getElementById('resultText');
+      resultEl.textContent = playerWon ? 'VICTORY' : 'DEFEAT';
+      resultEl.className = 'result-text ' + (playerWon ? 'win' : 'lose');
+      document.getElementById('battleArena').classList.remove('active');
+      document.getElementById('gameOverScreen').style.display = 'flex';
+    }
+
+    function startGame() {
+      gameRunning = true;
+      playerHP = 100;
+      enemyHP = 100;
+      playerTurn = true;
+      ultUsed = false;
+      enemyUltUsed = false;
+      updateHP();
+      setLog('选择你的技能...');
+      setSkillsEnabled(true);
+      document.getElementById('startScreen').style.display = 'none';
+      document.getElementById('gameOverScreen').style.display = 'none';
+      document.getElementById('battleArena').classList.add('active');
+    }
+
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('restartBtn').addEventListener('click', startGame);
+    document.querySelectorAll('.skill-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        playerAttack(parseInt(btn.dataset.skill));
+      });
+    });
+  </script>
+</body>
+</html>

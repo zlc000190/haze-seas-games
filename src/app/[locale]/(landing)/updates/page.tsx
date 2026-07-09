@@ -1,78 +1,78 @@
-import { getTranslations, setRequestLocale } from 'next-intl/server';
-
-import { getThemePage } from '@/core/theme';
-import { getMetadata } from '@/shared/lib/seo';
-import {
-  getLocalPostsAndCategories,
-  PostType as PostDataType,
-} from '@/shared/models/post';
-import { Post as PostType } from '@/shared/types/blocks/blog';
-import { DynamicPage } from '@/shared/types/blocks/landing';
+import { setRequestLocale } from 'next-intl/server';
+import { updates } from '@/lib/data/updates';
 
 export const revalidate = 3600;
 
-export const generateMetadata = getMetadata({
-  metadataKey: 'pages.updates.metadata',
-  canonicalUrl: '/updates',
-});
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  const isZh = locale === 'zh';
+  return {
+    title: isZh
+      ? '更新日志 - Haze Seas 版本时间线'
+      : 'Updates - Haze Seas Patch & Content Timeline',
+    description: isZh
+      ? 'Haze Seas 更新历史:Sea 3 Update 1(Land of the Gods + Okuchi)、Tremor 重做、Haze Seas 重制版上线。'
+      : 'Haze Seas update history: Sea 3 Update 1 (Land of the Gods + Okuchi), Tremor rework, remaster release.'
+  };
+}
 
-export default async function UpdatesPage({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}) {
+const kindColor: Record<string, string> = {
+  major: 'bg-haze-gold/20 text-haze-gold border-haze-gold/40',
+  minor: 'bg-haze-accent/20 text-haze-accent border-haze-accent/40',
+  patch: 'bg-slate-500/20 text-slate-300 border-slate-500/30'
+};
+
+export default async function UpdatesPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const isZh = locale === 'zh';
 
-  // load updates data
-  const t = await getTranslations('pages.updates');
+  return (
+    <div className="min-h-screen bg-haze-bg text-white">
+      <section className="relative overflow-hidden py-16 md:py-20 border-b border-white/5">
+        <div className="container-page relative z-10">
+          <h1 className="font-display text-5xl md:text-7xl tracking-wide text-white mb-4">
+            {isZh ? '更新日志' : 'Updates'}
+          </h1>
+          <p className="text-base md:text-lg text-muted-foreground max-w-3xl">
+            {isZh
+              ? '基于官方 Roblox 活动卡 + Trello 的版本和内容时间线。日期为美东时间(ET)。'
+              : 'Version and content timeline sourced from the official Roblox page and Trello. All dates are US Eastern Time (ET).'}
+          </p>
+        </div>
+      </section>
 
-  let posts: PostType[] = [];
-
-  try {
-    const { posts: allPosts } = await getLocalPostsAndCategories({
-      locale,
-      type: PostDataType.LOG,
-      postPrefix: '/updates/',
-    });
-
-    posts = allPosts
-      // sort posts by date desc
-      .sort((a, b) => {
-        const dateA = new Date(a.date || '').getTime();
-        const dateB = new Date(b.date || '').getTime();
-        return dateB - dateA;
-      })
-      // sort posts by created_at desc
-      .sort((a, b) => {
-        const createdAtA = new Date(a.created_at || '').getTime();
-        const createdAtB = new Date(b.created_at || '').getTime();
-        return createdAtB - createdAtA;
-      })
-      // sort posts by version desc
-      .sort((a, b) => {
-        const versionA = a.version || '';
-        const versionB = b.version || '';
-        return versionB.localeCompare(versionA);
-      });
-  } catch (error) {
-    console.log('getting posts failed:', error);
-  }
-
-  // build page sections
-  const page: DynamicPage = {
-    sections: {
-      updates: {
-        ...t.raw('page.sections.updates'),
-        data: {
-          posts,
-        },
-      },
-    },
-  };
-
-  // load page component
-  const Page = await getThemePage('dynamic-page');
-
-  return <Page locale={locale} page={page} />;
+      <section className="py-10">
+        <div className="container-page max-w-3xl">
+          <ol className="relative border-l-2 border-haze-gold/30 pl-6 space-y-8">
+            {updates.map((u, i) => (
+              <li key={i} className="relative">
+                <span className="absolute -left-[33px] top-1 w-4 h-4 rounded-full bg-haze-gold border-4 border-haze-bg" />
+                <article className="rounded-xl border border-white/5 bg-haze-card p-5">
+                  <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
+                    <div>
+                      <p className="text-xs text-muted-foreground font-mono">{u.date} ET</p>
+                      <h2 className="font-display text-2xl tracking-wide text-white mt-1">{isZh ? u.titleZh : u.title}</h2>
+                    </div>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-bold border uppercase ${kindColor[u.kind]}`}>
+                      {u.kind}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed mb-3">{isZh ? u.bodyZh : u.body}</p>
+                  <ul className="space-y-1 text-sm">
+                    {(isZh ? u.highlightsZh : u.highlights).map((h, j) => (
+                      <li key={j} className="flex items-start gap-2 text-slate-300">
+                        <span className="text-haze-accent shrink-0">▸</span>
+                        <span>{h}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+    </div>
+  );
 }

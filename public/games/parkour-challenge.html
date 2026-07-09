@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>🌊 Haze Seas — 跑酷挑战</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      overflow: hidden;
+      background: #0b1220;
+      font-family: 'Inter', system-ui, sans-serif;
+      touch-action: none;
+    }
+    #gameCanvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    #ui {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      pointer-events: none;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      z-index: 10;
+    }
+    .score-box {
+      background: rgba(11, 18, 32, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(245, 185, 77, 0.3);
+      border-radius: 12px;
+      padding: 10px 20px;
+      color: #f5b94d;
+    }
+    .score-box .label {
+      font-size: 11px;
+      color: #94a3b8;
+      letter-spacing: 1px;
+      font-weight: 500;
+    }
+    .score-box .value {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 32px;
+      line-height: 1;
+      letter-spacing: 2px;
+    }
+    #startScreen, #gameOverScreen {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(11, 18, 32, 0.92);
+      backdrop-filter: blur(10px);
+      z-index: 20;
+    }
+    #gameOverScreen { display: none; }
+    .title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 64px;
+      background: linear-gradient(135deg, #f5b94d 0%, #3aa9ff 50%, #f5b94d 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-align: center;
+      line-height: 1.1;
+      margin-bottom: 8px;
+      letter-spacing: 4px;
+    }
+    .subtitle {
+      font-size: 18px;
+      color: #94a3b8;
+      margin-bottom: 40px;
+      text-align: center;
+      max-width: 400px;
+      line-height: 1.5;
+    }
+    .btn {
+      background: linear-gradient(135deg, #f5b94d, #e0a020);
+      color: #0b1220;
+      border: none;
+      padding: 16px 48px;
+      font-size: 22px;
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 3px;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 24px rgba(245, 185, 77, 0.4);
+      transition: all 0.2s ease;
+    }
+    .btn:hover { transform: scale(1.05); }
+    .instructions {
+      margin-top: 32px;
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .instruction-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #64748b;
+      font-size: 13px;
+    }
+    .instruction-item span {
+      display: inline-block;
+      padding: 4px 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-size: 12px;
+    }
+    .final-score {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 80px;
+      color: #f5b94d;
+      margin-bottom: 8px;
+    }
+    .high-score {
+      font-size: 16px;
+      color: #3aa9ff;
+      margin-bottom: 32px;
+    }
+    #mobileJump {
+      display: none;
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: rgba(58, 169, 255, 0.2);
+      border: 2px solid rgba(58, 169, 255, 0.4);
+      color: #3aa9ff;
+      font-size: 32px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      z-index: 15;
+    }
+    #mobileJump:active { background: rgba(58, 169, 255, 0.4); }
+    @media (max-width: 768px) {
+      .title { font-size: 42px; }
+      .instructions { gap: 12px; }
+      .instruction-item { font-size: 11px; }
+      .score-box .value { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="ui">
+    <div class="score-box">
+      <div class="label">DISTANCE</div>
+      <div class="value" id="distDisplay">0m</div>
+    </div>
+    <div class="score-box">
+      <div class="label">BEST</div>
+      <div class="value" id="bestDisplay">0m</div>
+    </div>
+  </div>
+
+  <div id="startScreen">
+    <div class="title">PARKOUR</div>
+    <div class="subtitle">在甲板上奔跑跳跃，躲避礁石和木桶！速度越来越快，看你能跑多远！</div>
+    <button class="btn" id="startBtn">START RUNNING</button>
+    <div class="instructions">
+      <div class="instruction-item"><span>SPACE</span> 跳跃</div>
+      <div class="instruction-item">🪨 礁石</div>
+      <div class="instruction-item">🛢️ 木桶</div>
+    </div>
+  </div>
+
+  <div id="gameOverScreen">
+    <div class="title">GAME OVER</div>
+    <div class="final-score" id="finalDist">0m</div>
+    <div class="high-score" id="highScore">Best: 0m</div>
+    <button class="btn" id="restartBtn">RUN AGAIN</button>
+  </div>
+
+  <div id="mobileJump">⬆</div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let gameRunning = false;
+    let distance = 0;
+    let speed = 5;
+    let highScore = parseInt(localStorage.getItem('parkour_highscore') || '0');
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    document.getElementById('bestDisplay').textContent = highScore + 'm';
+
+    const player = {
+      x: 120,
+      y: 0,
+      width: 50,
+      height: 60,
+      vy: 0,
+      jumping: false,
+      groundY: 0,
+    };
+
+    let obstacles = [];
+    let particles = [];
+    let clouds = [];
+    let waveOffset = 0;
+
+    const keys = {};
+    document.addEventListener('keydown', e => {
+      keys[e.key] = true;
+      if (e.key === ' ') { e.preventDefault(); jump(); }
+    });
+    document.addEventListener('keyup', e => { keys[e.key] = false; });
+
+    // Mobile jump
+    const mobileJumpBtn = document.getElementById('mobileJump');
+    mobileJumpBtn.addEventListener('touchstart', e => { e.preventDefault(); jump(); });
+    mobileJumpBtn.addEventListener('mousedown', e => { e.preventDefault(); jump(); });
+    // Tap to jump
+    canvas.addEventListener('touchstart', e => { e.preventDefault(); jump(); });
+    canvas.addEventListener('click', e => { if (gameRunning) jump(); });
+
+    function jump() {
+      if (!gameRunning) return;
+      if (!player.jumping) {
+        player.vy = -16;
+        player.jumping = true;
+      }
+    }
+
+    function resetGame() {
+      distance = 0;
+      speed = 5;
+      obstacles = [];
+      particles = [];
+      clouds = [];
+      player.groundY = canvas.height - 120;
+      player.y = player.groundY;
+      player.vy = 0;
+      player.jumping = false;
+      // 初始云
+      for (let i = 0; i < 3; i++) {
+        clouds.push({
+          x: Math.random() * canvas.width,
+          y: 50 + Math.random() * 100,
+          size: 40 + Math.random() * 60,
+          speed: 0.3 + Math.random() * 0.5
+        });
+      }
+    }
+
+    function spawnObstacle() {
+      const types = ['rock', 'barrel'];
+      const type = types[Math.floor(Math.random() * types.length)];
+      const obs = {
+        x: canvas.width + 50,
+        y: player.groundY,
+        width: type === 'rock' ? 45 : 35,
+        height: type === 'rock' ? 40 : 50,
+        type: type,
+      };
+      obs.y = player.groundY + player.height - obs.height;
+      obstacles.push(obs);
+    }
+
+    function update() {
+      if (!gameRunning) return;
+
+      distance += speed * 0.1;
+      document.getElementById('distDisplay').textContent = Math.floor(distance) + 'm';
+
+      // 速度递增
+      if (speed < 12) speed += 0.002;
+
+      // 玩家物理
+      player.y += player.vy;
+      player.vy += 0.8;
+      if (player.y >= player.groundY) {
+        player.y = player.groundY;
+        player.vy = 0;
+        player.jumping = false;
+      }
+
+      // 跑步粒子
+      if (!player.jumping && Math.random() < 0.3) {
+        particles.push({
+          x: player.x,
+          y: player.y + player.height,
+          vx: -speed - Math.random() * 2,
+          vy: -Math.random() * 2,
+          radius: Math.random() * 3 + 1,
+          life: 1,
+        });
+      }
+      particles = particles.filter(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.1;
+        p.life -= 0.05;
+        return p.life > 0;
+      });
+
+      // 障碍物
+      const lastObs = obstacles[obstacles.length - 1];
+      const minGap = 200 + Math.random() * 200;
+      if (!lastObs || lastObs.x < canvas.width - minGap) {
+        spawnObstacle();
+      }
+      obstacles = obstacles.filter(obs => {
+        obs.x -= speed;
+        // 碰撞检测
+        if (player.x < obs.x + obs.width &&
+            player.x + player.width > obs.x &&
+            player.y < obs.y + obs.height &&
+            player.y + player.height > obs.y) {
+          endGame();
+        }
+        return obs.x > -50;
+      });
+
+      // 云
+      clouds.forEach(c => { c.x -= c.speed; });
+      clouds = clouds.filter(c => c.x > -c.size);
+      if (clouds.length < 4 && Math.random() < 0.01) {
+        clouds.push({
+          x: canvas.width + 50,
+          y: 50 + Math.random() * 100,
+          size: 40 + Math.random() * 60,
+          speed: 0.3 + Math.random() * 0.5
+        });
+      }
+
+      waveOffset += 0.02;
+    }
+
+    function draw() {
+      // 天空渐变
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      skyGrad.addColorStop(0, '#0b1220');
+      skyGrad.addColorStop(0.6, '#111a2e');
+      skyGrad.addColorStop(1, '#0a1525');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 星星
+      for (let i = 0; i < 30; i++) {
+        const x = (i * 137.5) % canvas.width;
+        const y = (i * 73.3) % (canvas.height * 0.4);
+        const tw = Math.sin(Date.now() * 0.003 + i) * 0.5 + 0.5;
+        ctx.fillStyle = `rgba(255,255,255,${tw * 0.3})`;
+        ctx.fillRect(x, y, 1.5, 1.5);
+      }
+
+      // 云
+      clouds.forEach(c => {
+        ctx.fillStyle = 'rgba(58, 169, 255, 0.06)';
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.size * 0.5, 0, Math.PI * 2);
+        ctx.arc(c.x + c.size * 0.3, c.y, c.size * 0.4, 0, Math.PI * 2);
+        ctx.arc(c.x - c.size * 0.3, c.y, c.size * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // 远景海面
+      const seaY = canvas.height - 80;
+      ctx.fillStyle = 'rgba(58, 169, 255, 0.08)';
+      ctx.fillRect(0, seaY, canvas.width, 80);
+
+      // 海浪
+      ctx.strokeStyle = 'rgba(58, 169, 255, 0.2)';
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        for (let x = 0; x < canvas.width; x += 5) {
+          const y = seaY + i * 20 + Math.sin(x * 0.02 + waveOffset + i) * 6;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+
+      // 甲板（地面）
+      const groundY = canvas.height - 60;
+      const deckGrad = ctx.createLinearGradient(0, groundY, 0, canvas.height);
+      deckGrad.addColorStop(0, '#3a2a1a');
+      deckGrad.addColorStop(1, '#1a1208');
+      ctx.fillStyle = deckGrad;
+      ctx.fillRect(0, groundY, canvas.width, 60);
+      // 甲板木纹
+      ctx.strokeStyle = 'rgba(139, 69, 19, 0.3)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < canvas.width; x += 40) {
+        const offset = (x - waveOffset * 20) % 40;
+        ctx.beginPath();
+        ctx.moveTo(x - offset, groundY);
+        ctx.lineTo(x - offset, canvas.height);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(245, 185, 77, 0.2)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, groundY);
+      ctx.lineTo(canvas.width, groundY);
+      ctx.stroke();
+
+      // 粒子
+      particles.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius * p.life, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(245, 185, 77, ${p.life * 0.4})`;
+        ctx.fill();
+      });
+
+      // 障碍物
+      obstacles.forEach(obs => {
+        if (obs.type === 'rock') {
+          // 礁石
+          ctx.save();
+          ctx.translate(obs.x + obs.width/2, obs.y + obs.height/2);
+          const rg = ctx.createRadialGradient(-5, -5, 2, 0, 0, obs.width/2);
+          rg.addColorStop(0, '#4a5a7a');
+          rg.addColorStop(1, '#1a2540');
+          ctx.fillStyle = rg;
+          ctx.beginPath();
+          ctx.moveTo(-obs.width/2, 0);
+          ctx.quadraticCurveTo(-obs.width/2, -obs.height/2, 0, -obs.height/2);
+          ctx.quadraticCurveTo(obs.width/2, -obs.height/2, obs.width/2, 0);
+          ctx.quadraticCurveTo(obs.width/2, obs.height/2, 0, obs.height/2);
+          ctx.quadraticCurveTo(-obs.width/2, obs.height/2, -obs.width/2, 0);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(245, 185, 77, 0.2)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.restore();
+        } else {
+          // 木桶
+          ctx.save();
+          ctx.translate(obs.x + obs.width/2, obs.y + obs.height/2);
+          ctx.fillStyle = '#8B4513';
+          ctx.fillRect(-obs.width/2, -obs.height/2, obs.width, obs.height);
+          ctx.strokeStyle = '#654321';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(-obs.width/2, -obs.height/2, obs.width, obs.height);
+          // 铁箍
+          ctx.fillStyle = '#444';
+          ctx.fillRect(-obs.width/2, -obs.height/2 + 8, obs.width, 3);
+          ctx.fillRect(-obs.width/2, obs.height/2 - 11, obs.width, 3);
+          ctx.restore();
+        }
+      });
+
+      // 玩家（海贼角色）
+      ctx.save();
+      ctx.translate(player.x + player.width/2, player.y + player.height/2);
+      const runBob = player.jumping ? 0 : Math.sin(Date.now() * 0.02) * 3;
+      ctx.translate(0, runBob);
+      // 身体
+      ctx.fillStyle = '#c0392b';
+      ctx.fillRect(-12, -10, 24, 25);
+      // 头
+      ctx.fillStyle = '#fdbcb4';
+      ctx.beginPath();
+      ctx.arc(0, -22, 13, 0, Math.PI * 2);
+      ctx.fill();
+      // 草帽
+      ctx.fillStyle = '#f5b94d';
+      ctx.beginPath();
+      ctx.ellipse(0, -28, 18, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#e0a020';
+      ctx.beginPath();
+      ctx.ellipse(0, -31, 10, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // 草帽带
+      ctx.fillStyle = '#c0392b';
+      ctx.fillRect(-10, -29, 20, 2);
+      // 眼睛
+      ctx.fillStyle = '#000';
+      ctx.fillRect(-5, -23, 2, 3);
+      ctx.fillRect(3, -23, 2, 3);
+      // 嘴
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, -18, 3, 0, Math.PI);
+      ctx.stroke();
+      // 腿
+      if (player.jumping) {
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(-10, 15, 8, 12);
+        ctx.fillRect(2, 15, 8, 12);
+      } else {
+        const legPhase = Math.sin(Date.now() * 0.02);
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(-10, 15, 8, 12 + legPhase * 3);
+        ctx.fillRect(2, 15, 8, 12 - legPhase * 3);
+      }
+      ctx.restore();
+    }
+
+    function gameLoop() {
+      if (gameRunning) {
+        update();
+      }
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+
+    function startGame() {
+      gameRunning = true;
+      resetGame();
+      document.getElementById('startScreen').style.display = 'none';
+      document.getElementById('gameOverScreen').style.display = 'none';
+      if (window.innerWidth <= 768) {
+        document.getElementById('mobileJump').style.display = 'flex';
+      }
+    }
+
+    function endGame() {
+      gameRunning = false;
+      const dist = Math.floor(distance);
+      if (dist > highScore) {
+        highScore = dist;
+        localStorage.setItem('parkour_highscore', highScore.toString());
+      }
+      document.getElementById('finalDist').textContent = dist + 'm';
+      document.getElementById('highScore').textContent = `Best: ${highScore}m`;
+      document.getElementById('gameOverScreen').style.display = 'flex';
+      document.getElementById('mobileJump').style.display = 'none';
+    }
+
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('restartBtn').addEventListener('click', startGame);
+
+    // Attract loop
+    function attractLoop() {
+      if (!gameRunning) {
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        skyGrad.addColorStop(0, '#0b1220');
+        skyGrad.addColorStop(0.6, '#111a2e');
+        skyGrad.addColorStop(1, '#0a1525');
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // 装饰海浪
+        ctx.strokeStyle = 'rgba(58, 169, 255, 0.15)';
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath();
+          for (let x = 0; x < canvas.width; x += 5) {
+            const y = canvas.height * 0.6 + Math.sin(x * 0.02 + Date.now() * 0.002 + i) * 20 + i * 30;
+            if (x === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+      }
+      requestAnimationFrame(attractLoop);
+    }
+
+    gameLoop();
+    attractLoop();
+  </script>
+</body>
+</html>

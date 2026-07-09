@@ -1,9 +1,24 @@
-import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { setRequestLocale, getTranslations } from 'next-intl/server';
+import type { Metadata } from 'next';
 
-import { getThemePage } from '@/core/theme';
-import { DynamicPage } from '@/shared/types/blocks/landing';
+import { Home } from '@/themes/default/blocks/home';
 
 export const revalidate = 3600;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'landing.metadata' });
+
+  return {
+    title: t('title'),
+    description: t('description'),
+    keywords: t('keywords'),
+  };
+}
 
 export default async function LandingPage({
   params,
@@ -13,13 +28,5 @@ export default async function LandingPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const t = await getTranslations('pages.index');
-
-  // get page data
-  const page: DynamicPage = t.raw('page');
-
-  // load page component
-  const Page = await getThemePage('dynamic-page');
-
-  return <Page locale={locale} page={page} />;
+  return <Home />;
 }

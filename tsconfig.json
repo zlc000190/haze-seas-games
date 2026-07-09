@@ -27,9 +27,6 @@
     "paths": {
       "@/*": [
         "./src/*"
-      ],
-      "@/.source": [
-        "./.source/index.ts"
       ]
     }
   },

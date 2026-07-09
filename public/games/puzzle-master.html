@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>🌊 Haze Seas — 拼图大师</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      overflow: hidden;
+      background: #0b1220;
+      font-family: 'Inter', system-ui, sans-serif;
+      touch-action: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    #gameContainer {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #ui {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .info-box {
+      background: rgba(11, 18, 32, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(245, 185, 77, 0.3);
+      border-radius: 12px;
+      padding: 10px 24px;
+      text-align: center;
+    }
+    .info-box .label {
+      font-size: 11px;
+      color: #94a3b8;
+      letter-spacing: 1px;
+      font-weight: 500;
+    }
+    .info-box .value {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      color: #f5b94d;
+      line-height: 1;
+    }
+    .info-box.blue .value { color: #3aa9ff; }
+    .puzzle-area {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+    }
+    .puzzle-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 4px;
+      width: 360px;
+      height: 360px;
+      background: rgba(11, 18, 32, 0.6);
+      border: 2px solid rgba(245, 185, 77, 0.2);
+      border-radius: 12px;
+      padding: 4px;
+    }
+    .puzzle-tile {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      background: linear-gradient(135deg, #111a2e, #1a2640);
+      border: 1px solid rgba(58, 169, 255, 0.2);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
+      position: relative;
+    }
+    .puzzle-tile:hover {
+      border-color: rgba(245, 185, 77, 0.5);
+      background: linear-gradient(135deg, #1a2640, #243355);
+    }
+    .puzzle-tile.movable {
+      border-color: rgba(245, 185, 77, 0.4);
+    }
+    .puzzle-tile.movable:hover {
+      background: rgba(245, 185, 77, 0.15);
+      transform: scale(0.97);
+    }
+    .puzzle-tile.empty {
+      background: transparent;
+      border: 1px dashed rgba(58, 169, 255, 0.15);
+      cursor: default;
+    }
+    .puzzle-tile.empty:hover {
+      background: transparent;
+      border-color: rgba(58, 169, 255, 0.15);
+    }
+    .preview {
+      width: 180px;
+      height: 180px;
+      background: rgba(11, 18, 32, 0.6);
+      border: 2px solid rgba(58, 169, 255, 0.2);
+      border-radius: 12px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 2px;
+      padding: 4px;
+    }
+    .preview-tile {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      background: rgba(17, 26, 46, 0.5);
+      border-radius: 4px;
+    }
+    .preview-label {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 14px;
+      color: #94a3b8;
+      letter-spacing: 2px;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    #startScreen, #gameOverScreen {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(11, 18, 32, 0.92);
+      backdrop-filter: blur(10px);
+      z-index: 20;
+    }
+    #gameOverScreen { display: none; }
+    .title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 64px;
+      background: linear-gradient(135deg, #f5b94d 0%, #3aa9ff 50%, #f5b94d 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-align: center;
+      line-height: 1.1;
+      margin-bottom: 8px;
+      letter-spacing: 4px;
+    }
+    .subtitle {
+      font-size: 18px;
+      color: #94a3b8;
+      margin-bottom: 40px;
+      text-align: center;
+      max-width: 420px;
+      line-height: 1.5;
+    }
+    .btn {
+      background: linear-gradient(135deg, #f5b94d, #e0a020);
+      color: #0b1220;
+      border: none;
+      padding: 16px 48px;
+      font-size: 22px;
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 3px;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 24px rgba(245, 185, 77, 0.4);
+      transition: all 0.2s ease;
+    }
+    .btn:hover { transform: scale(1.05); }
+    .instructions {
+      margin-top: 32px;
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .instruction-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #64748b;
+      font-size: 13px;
+    }
+    .final-info {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 56px;
+      color: #f5b94d;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 768px) {
+      .title { font-size: 42px; }
+      .puzzle-area { flex-direction: column; gap: 12px; }
+      .puzzle-grid { width: 280px; height: 280px; }
+      .puzzle-tile { font-size: 36px; }
+      .preview { width: 140px; height: 140px; }
+      .preview-tile { font-size: 18px; }
+      .info-box .value { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="gameContainer">
+    <div id="ui">
+      <div class="info-box"><div class="label">MOVES</div><div class="value" id="movesDisplay">0</div></div>
+      <div class="info-box blue"><div class="label">TIME</div><div class="value" id="timeDisplay">0.0s</div></div>
+    </div>
+    <div class="puzzle-area">
+      <div class="puzzle-grid" id="puzzleGrid"></div>
+      <div>
+        <div class="preview-label">TARGET</div>
+        <div class="preview" id="previewGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="startScreen">
+    <div class="title">PUZZLE MASTER</div>
+    <div class="subtitle">滑动方块还原海贼王图案！点击空格旁的方块进行移动，用最少步数完成。</div>
+    <button class="btn" id="startBtn">START PUZZLE</button>
+    <div class="instructions">
+      <div class="instruction-item"> 点击方块移动</div>
+      <div class="instruction-item"> 还原原图获胜</div>
+    </div>
+  </div>
+
+  <div id="gameOverScreen">
+    <div class="title">SOLVED!</div>
+    <div class="final-info" id="finalMoves">0 moves</div>
+    <div class="subtitle" id="finalTime">0.0s</div>
+    <button class="btn" id="restartBtn">PLAY AGAIN</button>
+  </div>
+
+  <script>
+    // 3x3 拼图，用emoji组成图案
+    const PATTERN = ['🏴', '☠️', '⚔️', '🗺️', '🦜', '💰', '⚓', '🚢', null];
+    let tiles = [];
+    let moves = 0;
+    let startTime = 0;
+    let timerInterval = null;
+    let gameRunning = false;
+
+    function renderGrid() {
+      const gridEl = document.getElementById('puzzleGrid');
+      gridEl.innerHTML = '';
+      const emptyIdx = tiles.indexOf(null);
+      tiles.forEach((tile, i) => {
+        const tileEl = document.createElement('div');
+        tileEl.className = 'puzzle-tile';
+        if (tile === null) {
+          tileEl.classList.add('empty');
+          tileEl.textContent = '';
+        } else {
+          tileEl.textContent = tile;
+          // 检查是否可移动（与空格相邻）
+          if (isAdjacent(i, emptyIdx)) {
+            tileEl.classList.add('movable');
+          }
+        }
+        tileEl.addEventListener('click', () => clickTile(i));
+        gridEl.appendChild(tileEl);
+      });
+    }
+
+    function renderPreview() {
+      const previewEl = document.getElementById('previewGrid');
+      previewEl.innerHTML = '';
+      PATTERN.forEach(p => {
+        const el = document.createElement('div');
+        el.className = 'preview-tile';
+        el.textContent = p || '';
+        if (!p) el.style.opacity = '0.2';
+        previewEl.appendChild(el);
+      });
+    }
+
+    function isAdjacent(a, b) {
+      const ar = Math.floor(a / 3), ac = a % 3;
+      const br = Math.floor(b / 3), bc = b % 3;
+      return (Math.abs(ar - br) + Math.abs(ac - bc)) === 1;
+    }
+
+    function clickTile(idx) {
+      if (!gameRunning) return;
+      if (tiles[idx] === null) return;
+      const emptyIdx = tiles.indexOf(null);
+      if (!isAdjacent(idx, emptyIdx)) return;
+
+      // 交换
+      [tiles[idx], tiles[emptyIdx]] = [tiles[emptyIdx], tiles[idx]];
+      moves++;
+      document.getElementById('movesDisplay').textContent = moves;
+      renderGrid();
+      checkWin();
+    }
+
+    function checkWin() {
+      for (let i = 0; i < PATTERN.length; i++) {
+        if (tiles[i] !== PATTERN[i]) return;
+      }
+      // 胜利
+      endGame();
+    }
+
+    function shuffleTiles() {
+      tiles = [...PATTERN];
+      // 从已解决状态开始随机移动来打乱（确保可解）
+      let emptyIdx = tiles.indexOf(null);
+      for (let i = 0; i < 100; i++) {
+        const neighbors = getNeighbors(emptyIdx);
+        const randIdx = neighbors[Math.floor(Math.random() * neighbors.length)];
+        [tiles[emptyIdx], tiles[randIdx]] = [tiles[randIdx], tiles[emptyIdx]];
+        emptyIdx = randIdx;
+      }
+    }
+
+    function getNeighbors(idx) {
+      const r = Math.floor(idx / 3), c = idx % 3;
+      const result = [];
+      if (r > 0) result.push(idx - 3);
+      if (r < 2) result.push(idx + 3);
+      if (c > 0) result.push(idx - 1);
+      if (c < 2) result.push(idx + 1);
+      return result;
+    }
+
+    function updateTimer() {
+      const elapsed = (Date.now() - startTime) / 1000;
+      document.getElementById('timeDisplay').textContent = elapsed.toFixed(1) + 's';
+    }
+
+    function startGame() {
+      gameRunning = true;
+      moves = 0;
+      shuffleTiles();
+      renderGrid();
+      renderPreview();
+      document.getElementById('movesDisplay').textContent = '0';
+      document.getElementById('timeDisplay').textContent = '0.0s';
+      document.getElementById('startScreen').style.display = 'none';
+      document.getElementById('gameOverScreen').style.display = 'none';
+      startTime = Date.now();
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(updateTimer, 100);
+    }
+
+    function endGame() {
+      gameRunning = false;
+      if (timerInterval) clearInterval(timerInterval);
+      const elapsed = (Date.now() - startTime) / 1000;
+      document.getElementById('finalMoves').textContent = moves + ' moves';
+      document.getElementById('finalTime').textContent = elapsed.toFixed(1) + 's';
+      document.getElementById('gameOverScreen').style.display = 'flex';
+    }
+
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('restartBtn').addEventListener('click', startGame);
+
+    // 初始预览
+    tiles = [...PATTERN];
+    renderGrid();
+    renderPreview();
+  </script>
+</body>
+</html>

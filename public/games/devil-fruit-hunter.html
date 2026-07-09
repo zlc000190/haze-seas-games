@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>🌊 Haze Seas — 恶魔果实猎人</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      overflow: hidden;
+      background: #0b1220;
+      font-family: 'Bebas Neue', sans-serif;
+      touch-action: none;
+    }
+    #gameCanvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    #ui {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      pointer-events: none;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      z-index: 10;
+    }
+    .score-box {
+      background: rgba(11, 18, 32, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(245, 185, 77, 0.3);
+      border-radius: 12px;
+      padding: 10px 20px;
+      color: #f5b94d;
+      font-size: 24px;
+      letter-spacing: 2px;
+    }
+    .score-box .label {
+      font-size: 11px;
+      color: #94a3b8;
+      letter-spacing: 1px;
+      font-family: system-ui, sans-serif;
+      font-weight: 500;
+    }
+    .score-box .value {
+      font-size: 32px;
+      line-height: 1;
+    }
+    #startScreen, #gameOverScreen {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(11, 18, 32, 0.92);
+      backdrop-filter: blur(10px);
+      z-index: 20;
+      pointer-events: auto;
+    }
+    #gameOverScreen { display: none; }
+    .title {
+      font-size: 64px;
+      background: linear-gradient(135deg, #f5b94d 0%, #3aa9ff 50%, #f5b94d 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-align: center;
+      line-height: 1.1;
+      margin-bottom: 8px;
+      letter-spacing: 4px;
+    }
+    .subtitle {
+      font-size: 18px;
+      color: #94a3b8;
+      margin-bottom: 40px;
+      font-family: system-ui, sans-serif;
+      text-align: center;
+      max-width: 400px;
+      line-height: 1.5;
+    }
+    .btn {
+      background: linear-gradient(135deg, #f5b94d, #e0a020);
+      color: #0b1220;
+      border: none;
+      padding: 16px 48px;
+      font-size: 22px;
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 3px;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 24px rgba(245, 185, 77, 0.4);
+      transition: all 0.2s ease;
+      pointer-events: auto;
+    }
+    .btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 32px rgba(245, 185, 77, 0.6);
+    }
+    .instructions {
+      margin-top: 32px;
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .instruction-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #64748b;
+      font-size: 13px;
+      font-family: system-ui, sans-serif;
+    }
+    .instruction-item span {
+      display: inline-block;
+      padding: 4px 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .final-score {
+      font-size: 80px;
+      color: #f5b94d;
+      margin-bottom: 8px;
+    }
+    .high-score {
+      font-size: 16px;
+      color: #3aa9ff;
+      margin-bottom: 32px;
+      font-family: system-ui, sans-serif;
+    }
+    #mobileControls {
+      display: none;
+      position: absolute;
+      bottom: 20px;
+      left: 0; right: 0;
+      justify-content: space-between;
+      padding: 0 20px;
+      pointer-events: auto;
+      z-index: 15;
+    }
+    .mobile-btn {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: rgba(58, 169, 255, 0.2);
+      border: 2px solid rgba(58, 169, 255, 0.4);
+      color: #3aa9ff;
+      font-size: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    .mobile-btn:active {
+      background: rgba(58, 169, 255, 0.4);
+    }
+    @media (max-width: 768px) {
+      .title { font-size: 42px; }
+      .instructions { gap: 12px; }
+      .instruction-item { font-size: 11px; }
+      #mobileControls { display: flex; }
+      .score-box .value { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  
+  <div id="ui">
+    <div class="score-box">
+      <div class="label">SCORE</div>
+      <div class="value" id="score">0</div>
+    </div>
+    <div class="score-box">
+      <div class="label">FRUITS</div>
+      <div class="value" id="fruits">0</div>
+    </div>
+  </div>
+  
+  <!-- 开始画面 -->
+  <div id="startScreen">
+    <div class="title">HAZE SEAS</div>
+    <div class="subtitle">Collect Devil Fruits across the Grand Line. Avoid the Sea Kings!</div>
+    <button class="btn" id="startBtn">SET SAIL</button>
+    <div class="instructions">
+      <div class="instruction-item">
+        <span>← →</span> 移动
+      </div>
+      <div class="instruction-item">
+        🍎 +100 分
+      </div>
+      <div class="instruction-item">
+        💣 扣 50 分
+      </div>
+      <div class="instruction-item">
+        🌟 +500 分
+      </div>
+    </div>
+  </div>
+  
+  <!-- 游戏结束画面 -->
+  <div id="gameOverScreen">
+    <div class="title">GAME OVER</div>
+    <div class="final-score" id="finalScore">0</div>
+    <div class="high-score" id="highScore">Best: 0</div>
+    <button class="btn" id="restartBtn">SAIL AGAIN</button>
+  </div>
+  
+  <!-- 移动端控制 -->
+  <div id="mobileControls">
+    <div class="mobile-btn" id="leftBtn">◀</div>
+    <div class="mobile-btn" id="rightBtn">▶</div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // 游戏状态
+    let gameRunning = false;
+    let score = 0;
+    let fruitsCollected = 0;
+    let highScore = parseInt(localStorage.getItem('hazeseas_highscore') || '0');
+    let lives = 3;
+    
+    // 画布尺寸
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+    
+    // 玩家（海盗船）
+    const player = {
+      x: 0,
+      y: 0,
+      width: 60,
+      height: 50,
+      speed: 0,
+      maxSpeed: 8,
+      acceleration: 0.8,
+      friction: 0.85,
+      tilt: 0,
+      trail: []
+    };
+    
+    // 掉落物
+    let items = [];
+    let particles = [];
+    let bubbles = [];
+    let seaMonsters = [];
+    
+    // 掉落物类型
+    const itemTypes = [
+      { emoji: '🍎', score: 100, speed: 2, rarity: 0.4, color: '#ff5c6c' },    // 普通果实
+      { emoji: '🍇', score: 150, speed: 2.5, rarity: 0.3, color: '#a855f7' },  // 稀有果实
+      { emoji: '⭐', score: 500, speed: 3.5, rarity: 0.08, color: '#f5b94d' }, // 宝藏星
+      { emoji: '💣', score: -50, speed: 2.2, rarity: 0.18, color: '#ff4444' }, // 炸弹
+      { emoji: '👹', score: -100, speed: 3, rarity: 0.04, color: '#ff0000' },  // 海怪
+    ];
+    
+    // 输入控制
+    const keys = {};
+    document.addEventListener('keydown', e => { keys[e.key] = true; });
+    document.addEventListener('keyup', e => { keys[e.key] = false; });
+    
+    // 移动端控制
+    let touchLeft = false, touchRight = false;
+    document.getElementById('leftBtn').addEventListener('touchstart', (e) => { e.preventDefault(); touchLeft = true; });
+    document.getElementById('leftBtn').addEventListener('touchend', (e) => { e.preventDefault(); touchLeft = false; });
+    document.getElementById('rightBtn').addEventListener('touchstart', (e) => { e.preventDefault(); touchRight = true; });
+    document.getElementById('rightBtn').addEventListener('touchend', (e) => { e.preventDefault(); touchRight = false; });
+    // 鼠标支持（移动端按钮也支持鼠标）
+    document.getElementById('leftBtn').addEventListener('mousedown', () => touchLeft = true);
+    document.getElementById('leftBtn').addEventListener('mouseup', () => touchLeft = false);
+    document.getElementById('rightBtn').addEventListener('mousedown', () => touchRight = true);
+    document.getElementById('rightBtn').addEventListener('mouseup', () => touchRight = false);
+    
+    // 触摸滑动控制
+    let touchStartX = 0;
+    document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+    document.addEventListener('touchmove', e => {
+      const dx = e.touches[0].clientX - touchStartX;
+      player.speed = Math.max(-player.maxSpeed, Math.min(player.maxSpeed, dx * 0.15));
+    });
+    document.addEventListener('touchend', () => { touchStartX = 0; });
+    
+    function resetPlayer() {
+      player.x = canvas.width / 2 - player.width / 2;
+      player.y = canvas.height - 100;
+      player.speed = 0;
+      player.tilt = 0;
+      player.trail = [];
+    }
+    
+    function spawnItem() {
+      const rand = Math.random();
+      let cum = 0;
+      let type = itemTypes[0];
+      for (const t of itemTypes) {
+        cum += t.rarity;
+        if (rand <= cum) { type = t; break; }
+      }
+      items.push({
+        x: Math.random() * (canvas.width - 40) + 20,
+        y: -40,
+        type: type,
+        rotation: 0,
+        rotSpeed: (Math.random() - 0.5) * 0.1,
+        wobble: Math.random() * Math.PI * 2
+      });
+    }
+    
+    function spawnBubble() {
+      bubbles.push({
+        x: Math.random() * canvas.width,
+        y: canvas.height + 10,
+        radius: Math.random() * 3 + 1,
+        speed: Math.random() * 1 + 0.5,
+        opacity: Math.random() * 0.3 + 0.1
+      });
+    }
+    
+    function createParticles(x, y, color, count = 8) {
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x, y,
+          vx: (Math.random() - 0.5) * 6,
+          vy: (Math.random() - 0.5) * 6 - 2,
+          radius: Math.random() * 4 + 2,
+          color,
+          life: 1,
+          decay: Math.random() * 0.03 + 0.02
+        });
+      }
+    }
+    
+    // 绘制海盗船
+    function drawBoat(ctx, x, y, w, h, tilt) {
+      ctx.save();
+      ctx.translate(x + w/2, y + h/2);
+      ctx.rotate(tilt);
+      
+      // 船身
+      ctx.fillStyle = '#8B4513';
+      ctx.beginPath();
+      ctx.moveTo(-w/2, -h/4);
+      ctx.quadraticCurveTo(-w/2, h/2, 0, h/2);
+      ctx.quadraticCurveTo(w/2, h/2, w/2, -h/4);
+      ctx.closePath();
+      ctx.fill();
+      
+      // 船身边缘高光
+      ctx.strokeStyle = '#A0522D';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      // 桅杆
+      ctx.fillStyle = '#654321';
+      ctx.fillRect(-3, -h/2 - 15, 6, 35);
+      
+      // 帆
+      ctx.fillStyle = '#f5f5dc';
+      ctx.beginPath();
+      ctx.moveTo(0, -h/2 - 15);
+      ctx.quadraticCurveTo(w/2, -h/2 - 5, 0, -h/2 + 5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#e0e0c0';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      
+      // 草帽（Luffy 标志）
+      ctx.fillStyle = '#f5b94d';
+      ctx.beginPath();
+      ctx.ellipse(0, -h/2 - 18, 12, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#e0a020';
+      ctx.beginPath();
+      ctx.ellipse(0, -h/2 - 20, 6, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.restore();
+    }
+    
+    // 绘制深海背景
+    function drawBackground() {
+      // 渐变深海
+      const grad = ctx.createRadialGradient(
+        canvas.width/2, canvas.height/2, 0,
+        canvas.width/2, canvas.height/2, canvas.height
+      );
+      grad.addColorStop(0, '#111a2e');
+      grad.addColorStop(0.5, '#0b1220');
+      grad.addColorStop(1, '#070d18');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // 从顶部照射的光束
+      const lightGrad = ctx.createLinearGradient(
+        canvas.width/2 - 100, 0,
+        canvas.width/2 + 100, 0
+      );
+      lightGrad.addColorStop(0, 'transparent');
+      lightGrad.addColorStop(0.5, 'rgba(58, 169, 255, 0.03)');
+      lightGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = lightGrad;
+      ctx.fillRect(canvas.width/2 - 150, 0, 300, canvas.height);
+      
+      // 水面波纹（顶部）
+      ctx.strokeStyle = 'rgba(58, 169, 255, 0.1)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        for (let x = 0; x < canvas.width; x += 5) {
+          const y = 30 + i * 15 + Math.sin(x * 0.02 + Date.now() * 0.002 + i) * 8;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+    }
+    
+    function update() {
+      if (!gameRunning) return;
+      
+      // 玩家移动
+      if (keys['ArrowLeft'] || keys['a'] || keys['A'] || touchLeft) {
+        player.speed -= player.acceleration;
+      }
+      if (keys['ArrowRight'] || keys['d'] || keys['D'] || touchRight) {
+        player.speed += player.acceleration;
+      }
+      player.speed *= player.friction;
+      player.speed = Math.max(-player.maxSpeed, Math.min(player.maxSpeed, player.speed));
+      player.x += player.speed;
+      player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+      player.tilt = player.speed * 0.03;
+      
+      // 船尾浪花
+      if (Math.abs(player.speed) > 1) {
+        player.trail.push({
+          x: player.x + player.width/2 + (Math.random() - 0.5) * 20,
+          y: player.y + player.height,
+          radius: Math.random() * 6 + 3,
+          life: 1
+        });
+      }
+      player.trail = player.trail.filter(t => {
+        t.life -= 0.05;
+        t.y += 0.5;
+        return t.life > 0;
+      });
+      
+      // 生成掉落物
+      if (Math.random() < 0.025) spawnItem();
+      
+      // 更新掉落物
+      items = items.filter(item => {
+        item.y += item.type.speed;
+        item.rotation += item.rotSpeed;
+        item.wobble += 0.03;
+        item.x += Math.sin(item.wobble) * 0.5;
+        
+        // 碰撞检测
+        const dx = item.x - (player.x + player.width/2);
+        const dy = item.y - (player.y + player.height/2);
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        
+        if (dist < 40) {
+          score += item.type.score;
+          if (item.type.score > 0) fruitsCollected++;
+          createParticles(item.x, item.y, item.type.color, 12);
+          document.getElementById('score').textContent = score;
+          document.getElementById('fruits').textContent = fruitsCollected;
+          
+          if (item.type.score < 0) {
+            lives--;
+            // 屏幕震动效果
+            canvas.style.transform = `translate(${(Math.random()-0.5)*10}px, ${(Math.random()-0.5)*10}px)`;
+            setTimeout(() => canvas.style.transform = '', 200);
+            if (lives <= 0) endGame();
+          }
+          return false;
+        }
+        
+        return item.y < canvas.height + 50;
+      });
+      
+      // 更新粒子
+      particles = particles.filter(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.1;
+        p.life -= p.decay;
+        return p.life > 0;
+      });
+      
+      // 气泡
+      if (Math.random() < 0.1) spawnBubble();
+      bubbles = bubbles.filter(b => {
+        b.y -= b.speed;
+        b.x += Math.sin(b.y * 0.01) * 0.3;
+        return b.y > -10;
+      });
+    }
+    
+    function draw() {
+      drawBackground();
+      
+      // 绘制气泡
+      bubbles.forEach(b => {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(58, 169, 255, ${b.opacity})`;
+        ctx.fill();
+        ctx.strokeStyle = `rgba(58, 169, 255, ${b.opacity * 0.5})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      });
+      
+      // 船尾浪花
+      player.trail.forEach(t => {
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, t.radius * t.life, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(58, 169, 255, ${t.life * 0.3})`;
+        ctx.fill();
+      });
+      
+      // 绘制掉落物
+      items.forEach(item => {
+        ctx.save();
+        ctx.translate(item.x, item.y);
+        ctx.rotate(item.rotation);
+        ctx.font = '28px serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = item.type.color;
+        ctx.shadowBlur = 15;
+        ctx.fillText(item.type.emoji, 0, 0);
+        ctx.shadowBlur = 0;
+        ctx.restore();
+        
+        // 光晕
+        ctx.beginPath();
+        ctx.arc(item.x, item.y, 20, 0, Math.PI * 2);
+        ctx.fillStyle = `${item.type.color}10`;
+        ctx.fill();
+      });
+      
+      // 绘制粒子
+      particles.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius * p.life, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.life;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      });
+      
+      // 绘制玩家
+      drawBoat(ctx, player.x, player.y, player.width, player.height, player.tilt);
+      
+      // 生命值（船上方）
+      for (let i = 0; i < lives; i++) {
+        ctx.font = '16px serif';
+        ctx.fillText('❤️', player.x + 15 + i * 18, player.y - 10);
+      }
+    }
+    
+    function gameLoop() {
+      if (gameRunning) {
+        update();
+        draw();
+      }
+      requestAnimationFrame(gameLoop);
+    }
+    
+    function startGame() {
+      gameRunning = true;
+      score = 0;
+      fruitsCollected = 0;
+      lives = 3;
+      items = [];
+      particles = [];
+      bubbles = [];
+      resetPlayer();
+      document.getElementById('score').textContent = '0';
+      document.getElementById('fruits').textContent = '0';
+      document.getElementById('startScreen').style.display = 'none';
+      document.getElementById('gameOverScreen').style.display = 'none';
+      document.getElementById('mobileControls').style.display = window.innerWidth <= 768 ? 'flex' : 'none';
+    }
+    
+    function endGame() {
+      gameRunning = false;
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('hazeseas_highscore', highScore.toString());
+      }
+      document.getElementById('finalScore').textContent = score;
+      document.getElementById('highScore').textContent = `Best: ${highScore}`;
+      document.getElementById('gameOverScreen').style.display = 'flex';
+      document.getElementById('mobileControls').style.display = 'none';
+    }
+    
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('restartBtn').addEventListener('click', startGame);
+    
+    // 持续渲染背景（即使游戏未开始）
+    function attractLoop() {
+      if (!gameRunning) {
+        drawBackground();
+        // 绘制一些装饰性的气泡和波浪
+        if (Math.random() < 0.05) spawnBubble();
+        bubbles = bubbles.filter(b => {
+          b.y -= b.speed;
+          return b.y > -10;
+        });
+        bubbles.forEach(b => {
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(58, 169, 255, ${b.opacity})`;
+          ctx.fill();
+        });
+        
+        // 绘制一艘装饰小船在中间
+        const time = Date.now() * 0.001;
+        const boatX = canvas.width/2 - 30 + Math.sin(time) * 20;
+        const boatY = canvas.height/2 + 50;
+        drawBoat(ctx, boatX, boatY, 60, 50, Math.sin(time * 2) * 0.05);
+      }
+      requestAnimationFrame(attractLoop);
+    }
+    
+    gameLoop();
+    attractLoop();
+  </script>
+</body>
+</html>
