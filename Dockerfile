@@ -5,16 +5,14 @@
 FROM node:20-slim AS deps
 # pnpm 9.x (project lockfileVersion: 9.0)
 RUN npm install -g pnpm@9.15.4
+ENV CI=true
 WORKDIR /app
 
-# Copy lockfiles + workspace config first for cache
-# Must explicitly list pnpm-workspace.yaml — glob COPY is not shell-expanded
+# Copy lockfiles + workspace config (required for pnpm 9/10/11 to resolve
+# onlyBuiltDependencies — pnpm 11 deprecates package.json#pnpm entirely
+# and reads pnpm-workspace.yaml instead).
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
-# Approve build scripts that pnpm 11+ blocks by default
-# (sharp / @swc/core / @parcel/watcher / unrs-resolver all needed by Next.js)
-# Written to .npmrc so pnpm reads it from any directory
-RUN printf 'onlyBuiltDependencies[]=sharp\nonlyBuiltDependencies[]=@swc/core\nonlyBuiltDependencies[]=@parcel/watcher\nonlyBuiltDependencies[]=unrs-resolver\nnode-linker=hoisted\n' > .npmrc
 RUN pnpm install --frozen-lockfile
 
 # ---------- builder ----------
@@ -52,6 +50,6 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+  CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || 3000) + '/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
 CMD ["node", "server.js"]

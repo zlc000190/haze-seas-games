@@ -2,6 +2,11 @@
   "name": "hazeseas-games",
   "version": "0.2.0",
   "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20.9.0",
+    "pnpm": ">=9 <10"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --webpack",
@@ -9,6 +14,14 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "sharp",
+      "@swc/core",
+      "@parcel/watcher",
+      "unrs-resolver"
+    ]
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",

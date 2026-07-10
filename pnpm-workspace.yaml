@@ -1,5 +1,5 @@
-# pnpm workspace config (compatible with pnpm 9)
-# AGENTS 模板格式 + pnpm 11+ onlyBuiltDependencies 新位置
+# pnpm workspace config (compatible with pnpm 9+)
+# Keep build-script approvals here so Docker/Nixpacks installs are reproducible.
 packages: []
 onlyBuiltDependencies:
   - sharp
