@@ -1,11 +1,12 @@
 import type { MetadataRoute } from 'next';
 import { fruits } from '@/lib/data/fruits';
-import { bosses } from '@/lib/data/bosses';
-import { fightingStyles } from '@/lib/data/fighting-styles';
-import { races } from '@/lib/data/races';
-import { updates } from '@/lib/data/updates';
 
 const SITE = 'https://hazeseas.games';
+
+const locales = [
+  { code: 'en', prefix: '/en' },
+  { code: 'zh', prefix: '/zh' }
+] as const;
 
 const staticPaths = [
   { path: '/codes',                         priority: 0.95, changeFreq: 'daily'   as const },
@@ -27,22 +28,22 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const urls: MetadataRoute.Sitemap = [];
 
   // Home (both locales)
-  for (const locale of ['', '/zh']) {
+  for (const locale of locales) {
     urls.push({
-      url: `${SITE}${locale}/`,
+      url: `${SITE}${locale.prefix}`,
       lastModified: now,
       changeFrequency: 'daily',
       priority: 1.0,
       alternates: {
-        languages: { en: `${SITE}/`, zh: `${SITE}/zh/` }
+        languages: { en: `${SITE}/en`, zh: `${SITE}/zh` }
       }
     });
   }
 
   // Static wiki pages × 2 locales
   for (const entry of staticPaths) {
-    for (const locale of ['', '/zh']) {
-      const fullPath = `${locale}${entry.path}`;
+    for (const locale of locales) {
+      const fullPath = `${locale.prefix}${entry.path}`;
       urls.push({
         url: `${SITE}${fullPath}`,
         lastModified: now,
@@ -50,7 +51,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         priority: entry.priority,
         alternates: {
           languages: {
-            en: `${SITE}${entry.path}`,
+            en: `${SITE}/en${entry.path}`,
             zh: `${SITE}/zh${entry.path}`
           }
         }
@@ -60,15 +61,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   // Dynamic: Devil Fruits × 2 locales
   for (const f of fruits) {
-    for (const locale of ['', '/zh']) {
+    for (const locale of locales) {
       urls.push({
-        url: `${SITE}${locale}/systems/devil-fruits/${f.slug}`,
+        url: `${SITE}${locale.prefix}/systems/devil-fruits/${f.slug}`,
         lastModified: now,
         changeFrequency: 'weekly',
         priority: 0.7,
         alternates: {
           languages: {
-            en: `${SITE}/systems/devil-fruits/${f.slug}`,
+            en: `${SITE}/en/systems/devil-fruits/${f.slug}`,
             zh: `${SITE}/zh/systems/devil-fruits/${f.slug}`
           }
         }
