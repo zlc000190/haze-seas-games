@@ -7,15 +7,14 @@ FROM node:20-slim AS deps
 RUN npm install -g pnpm@9.15.4
 WORKDIR /app
 
-# Copy lockfiles first for cache
-COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* .npmrc* ./
+# Copy lockfiles + workspace config first for cache
+# Must explicitly list pnpm-workspace.yaml — glob COPY is not shell-expanded
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
 # Approve build scripts that pnpm 11+ blocks by default
 # (sharp / @swc/core / @parcel/watcher / unrs-resolver all needed by Next.js)
-RUN echo "onlyBuiltDependencies[]=sharp" >> .npmrc \
- && echo "onlyBuiltDependencies[]=@swc/core" >> .npmrc \
- && echo "onlyBuiltDependencies[]=@parcel/watcher" >> .npmrc \
- && echo "onlyBuiltDependencies[]=unrs-resolver" >> .npmrc \
- && echo "node-linker=hoisted" >> .npmrc
+# Written to .npmrc so pnpm reads it from any directory
+RUN printf 'onlyBuiltDependencies[]=sharp\nonlyBuiltDependencies[]=@swc/core\nonlyBuiltDependencies[]=@parcel/watcher\nonlyBuiltDependencies[]=unrs-resolver\nnode-linker=hoisted\n' > .npmrc
 RUN pnpm install --frozen-lockfile
 
 # ---------- builder ----------
