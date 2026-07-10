@@ -1,5 +1,8 @@
-allowBuilds:
-  '@parcel/watcher': set this to true or false
-  '@swc/core': set this to true or false
-  sharp: set this to true or false
-  unrs-resolver: set this to true or false
+# pnpm workspace config (compatible with pnpm 9)
+# AGENTS 模板格式 + pnpm 11+ onlyBuiltDependencies 新位置
+packages: []
+onlyBuiltDependencies:
+  - sharp
+  - '@swc/core'
+  - '@parcel/watcher'
+  - unrs-resolver

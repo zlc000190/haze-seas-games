@@ -5,24 +5,6 @@ import { getLocale, setRequestLocale } from 'next-intl/server';
 import { envConfigs } from '@/config';
 import { locales } from '@/config/locale';
 
-// Google Fonts skipped in dev to avoid network-blocking first-compile errors.
-// Will be re-enabled at deploy time when network is available.
-const isDev = process.env.NODE_ENV !== 'production';
-let bebasNeue: { variable: string };
-let inter: { variable: string };
-let jetbrainsMono: { variable: string };
-if (!isDev) {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { Bebas_Neue, Inter, JetBrains_Mono } = require('next/font/google');
-  bebasNeue = Bebas_Neue({ subsets: ['latin'], weight: ['400'], variable: '--font-display', display: 'swap', preload: false, adjustFontFallback: false });
-  inter     = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap', preload: false, adjustFontFallback: false });
-  jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap', preload: false, adjustFontFallback: false });
-} else {
-  bebasNeue = { variable: '' };
-  inter = { variable: '' };
-  jetbrainsMono = { variable: '' };
-}
-
 const SITE_URL = envConfigs.app_url;
 const SITE_NAME = envConfigs.app_name;
 
@@ -68,7 +50,6 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${bebasNeue.variable} ${inter.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
       <head>

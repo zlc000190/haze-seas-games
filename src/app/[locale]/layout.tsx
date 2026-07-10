@@ -3,7 +3,6 @@ import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
 
 import { routing } from '@/core/i18n/config';
-import { ThemeProvider } from '@/core/theme/provider';
 
 export default async function LocaleLayout({
   children,
@@ -21,9 +20,7 @@ export default async function LocaleLayout({
 
   return (
     <NextIntlClientProvider>
-      <ThemeProvider>
-        {children}
-      </ThemeProvider>
+      {children}
     </NextIntlClientProvider>
   );
 }

@@ -3,18 +3,24 @@
 
 # ---------- deps ----------
 FROM node:20-slim AS deps
-RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+# pnpm 9.x (project lockfileVersion: 9.0)
+RUN npm install -g pnpm@9.15.4
 WORKDIR /app
 
-# Copy only lockfiles first for cache
-COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
-# .npmrc for hoisted node_modules
-RUN echo "node-linker=hoisted" > .npmrc
+# Copy lockfiles first for cache
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* .npmrc* ./
+# Approve build scripts that pnpm 11+ blocks by default
+# (sharp / @swc/core / @parcel/watcher / unrs-resolver all needed by Next.js)
+RUN echo "onlyBuiltDependencies[]=sharp" >> .npmrc \
+ && echo "onlyBuiltDependencies[]=@swc/core" >> .npmrc \
+ && echo "onlyBuiltDependencies[]=@parcel/watcher" >> .npmrc \
+ && echo "onlyBuiltDependencies[]=unrs-resolver" >> .npmrc \
+ && echo "node-linker=hoisted" >> .npmrc
 RUN pnpm install --frozen-lockfile
 
 # ---------- builder ----------
 FROM node:20-slim AS builder
-RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+RUN npm install -g pnpm@9.15.4
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production

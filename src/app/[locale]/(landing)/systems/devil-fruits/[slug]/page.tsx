@@ -2,9 +2,14 @@ import { setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { fruits, type FruitRarity, type FruitType } from '@/lib/data/fruits';
+import { locales } from '@/config/locale';
+
+export const revalidate = 86400; // 24h
+export const dynamicParams = true;
 
 export function generateStaticParams() {
-  return fruits.map(f => ({ slug: f.slug }));
+  // next-intl requires the full [locale, ...rest] matrix
+  return fruits.flatMap(f => locales.map(locale => ({ locale, slug: f.slug })));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }) {
